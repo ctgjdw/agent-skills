@@ -1,63 +1,114 @@
 ---
 name: clean-notion-study-notes
-description: Clean up messy Notion study notes into well-structured, consistent markdown via the Notion MCP. Use when asked to "clean up my notes", "tidy this Notion page", "reformat my study notes", or "organize my notes in Notion".
-metadata:
-  author: ctgjdw
-  version: "1.0.0"
-  argument-hint: <notion-page-url-or-title>
+description: >-
+  Clean up and reformat a Notion page that holds rough notes pasted from a
+  webpage, e-lecture, course, or article — turning a messy copy-paste dump into
+  tidy, well-structured study notes IN PLACE. Use this whenever the user asks to
+  "clean up", "tidy", "reformat", "fix up", or "organize" a Notion page/notes by
+  name (e.g. "clean up my Notion page named 'Helm'"), especially for revision or
+  study notes. The page name is the argument. ALWAYS preserve existing images,
+  diagrams, and tables. Trigger even if the user doesn't say the word "skill".
 ---
 
-# Clean Notion Study Notes
+# Clean Notion Notes
 
-Fetch a Notion page's study notes, clean up their structure and formatting, and write the result back to the same page.
+Transform a Notion page of rough, pasted-in notes into clean, well-structured
+notes that read well on revision — editing the page **in place** via the Notion
+MCP server. The page to clean is identified by name, passed as the argument
+(referred to below as `<PAGE_NAME>`).
 
-## Requirements
+## Why this exists
 
-This skill requires the **Notion MCP server**. Before doing anything else, check whether it is
-connected.
+Notes copy-pasted from a webpage or e-lecture arrive with broken structure:
+emphasis sentences pasted as `#` headings, inconsistent heading levels, mangled
+list nesting, and code/YAML/shell crammed into a single line of inline code.
+The content is good; the formatting fights the reader. The goal is to fix the
+*presentation* so the user can revise efficiently — **never** to rewrite,
+summarize away, or drop the substance.
 
-### Checking for Notion MCP
+## Hard constraints
 
-Look for tools named `notion-search`, `notion-fetch`, or `notion-update-page`. If none of these
-tools are available, the Notion MCP is not connected. Stop and guide the user through setup
-instead of attempting the task.
-
-### Guiding the user to install Notion MCP
-
-If the tools are missing, tell the user to run:
-
-```bash
-claude mcp add --transport http notion https://mcp.notion.com/mcp
-```
-
-Then have them authenticate by running `/mcp` inside Claude Code and completing the OAuth flow
-in the browser. Notion MCP only supports user-based OAuth (no bearer tokens), so this step
-cannot be automated - a human must approve it.
-
-Once `/mcp` shows `notion` as connected, re-run this skill.
+- **Edit in place.** Update the existing page; do not create a new page or copy.
+- **Preserve all images, diagrams, and tables.** Reproduce their markdown
+  exactly (image URLs, table structure, column widths). Never delete them. If
+  you reorganize, keep each image/table near the content it illustrates.
+- **Preserve meaning.** Keep all the information. You may tighten wording and
+  remove pure duplication, but don't cut concepts or invent new ones.
+- **Preserve child pages/databases.** Never drop a `<page>` or `<database>`
+  block — removing it deletes the child. Use `<mention-page>` if you only need a
+  reference.
 
 ## Workflow
 
-1. **Locate the page.** If the user gave a URL, use `notion-fetch` directly. If they gave a
-   title or description, use `notion-search` first to find the right page, and confirm the
-   match with the user before proceeding if more than one plausible result comes back.
-2. **Fetch the current content** with `notion-fetch`.
-3. **Clean the notes.** Apply these rules:
-   - Normalize heading levels into a logical hierarchy (one H1 topic, H2 sections, H3 subsections).
-   - Merge fragmented bullet points and fix inconsistent list nesting.
-   - Deduplicate repeated content.
-   - Fix obvious typos and inconsistent terminology, without changing the meaning of the notes.
-   - Convert ad-hoc emphasis (random bold/italic/caps) into a consistent scheme: bold for key
-     terms, italics for asides.
-   - Preserve all original information. Do not summarize away content, only restructure and
-     tidy it.
-4. **Show a short before/after summary** of what changed (e.g. "merged 3 duplicate sections,
-   fixed heading levels, cleaned up 12 bullet points") and ask the user to confirm before writing
-   back, unless they've already indicated they want it applied directly.
-5. **Write the cleaned notes back** using `notion-update-page`, replacing the page content.
+### 1. Read the Notion-flavored Markdown spec
 
-## Notes
+Before editing, read the MCP resource `notion://docs/enhanced-markdown-spec`
+(via the resource-reading interface — do NOT fetch it as a URL). This is the
+source of truth for callouts, code blocks, tables, and image syntax. Don't guess
+syntax.
 
-- Never fabricate content that wasn't in the original notes.
-- If the page is very large, work section by section rather than attempting one giant rewrite.
-- If `notion-update-page` fails, report the exact error to the user rather than retrying blindly.
+### 2. Find the page
+
+Search the workspace for `<PAGE_NAME>` with `notion-search` (query_type
+`internal`). Pick the page whose title matches. If several plausibly match, or
+none do, ask the user to confirm rather than guessing.
+
+### 3. Fetch the full content
+
+`notion-fetch` the page by id. Read the whole `<content>` block carefully and
+identify the formatting problems (see Cleanup checklist). Note every image,
+table, and code block so you can preserve them.
+
+### 4. Rewrite the content
+
+Build the cleaned markdown, then apply it with `notion-update-page` using the
+`replace_content` command (`new_str` = full cleaned page). `replace_content`
+refuses if it would delete a child page/database, which is a useful safety net —
+if it errors, keep the `<page>`/`<database>` blocks intact and retry.
+
+### 5. Verify and fix auto-conversions
+
+`notion-fetch` again. Notion silently rewrites some things — check for and fix:
+- **Auto-linkified filenames** like `README.md` → `http://README.md`. Wrap such
+  filenames in inline code (`` `README.md` ``) so Notion leaves them alone.
+- Code blocks given the wrong language label (cosmetic; fix if it bothers you).
+- Lost emphasis or broken callouts.
+
+Apply small fixes with the `update_content` command (search-and-replace via
+`content_updates`), which is cheaper and safer than re-replacing everything.
+
+## Cleanup checklist
+
+Apply these transformations; they cover the usual copy-paste damage:
+
+- **Demote fake headings.** Bold sentences pasted as `#`/`##` headings (often a
+  concluding takeaway) are not section titles. Convert them to a normal
+  paragraph, **bold** text, or — for tips/warnings/definitions — a callout.
+- **Normalize the heading hierarchy.** Use `##` for main sections and `###` for
+  subsections, consistently and in order. The page title is already the H1.
+- **Fix list nesting.** Flatten the bogus nested-empty-bullet structure that
+  pasting produces; make sibling items real siblings. Use numbered lists for
+  sequences/steps, bullets otherwise. Every list item must contain inline text
+  (no empty items).
+- **Promote code to fenced blocks.** Move directory trees, YAML, and shell
+  commands out of inline ``` `code…<br>…` ``` into proper fenced blocks with a
+  language tag (```` ```yaml ````, ```` ```bash ````, etc.). Keep code content
+  literal — don't escape characters inside fences.
+- **Use callouts for labeled asides.** "Key Concept", "Best Practice",
+  "Note", "Important", warnings → `<callout>` with a fitting icon and a soft
+  background color (e.g. `gray_bg`, `green_bg`, `yellow_bg`, `blue_bg`). This
+  makes them scannable on revision.
+- **Tidy inline formatting.** Convert pasted artifacts: stray escaped delimiters,
+  zero-width characters inside URLs/words, `*term*` used for code → `` `term` ``.
+- **Add a table of contents** (`<table_of_contents/>`) near the top for long
+  pages, and a short summary callout if the page lacks an intro.
+- **Add a Source link** at the bottom if the page properties contain a source
+  URL (e.g. a `userDefined:URL` property), so the original is one click away.
+
+## Style
+
+Aim for notes a student would actually want to revise from: clear section
+headers, short scannable paragraphs, lists for enumerations, callouts for the
+things worth remembering, and clean code blocks. Tighten verbose prose, but keep
+the page's voice and all its facts. When in doubt about whether a change alters
+meaning, preserve the original.

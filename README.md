@@ -20,13 +20,14 @@ npx skills add ctgjdw/agent-skills --skill clean-notion-study-notes
 
 ### clean-notion-study-notes
 
-Cleans up messy Notion study notes into well-structured, consistent markdown.
-Requires the [Notion MCP server](https://developers.notion.com/guides/mcp/get-started-with-mcp)
-to be connected; the skill will guide you through installing it if it's missing.
+Cleans up and reformats a Notion page of rough, pasted-in notes (from a
+webpage, e-lecture, course, or article) into tidy, well-structured study
+notes, edited in place via the [Notion MCP server](https://developers.notion.com/guides/mcp/get-started-with-mcp).
+Preserves all images, diagrams, tables, and child pages/databases.
 
 **Use when:**
 
-- "Clean up my notes"
-- "Tidy this Notion page"
-- "Reformat my study notes"
+- "Clean up my Notion page named 'X'"
+- "Tidy up my notes"
+- "Reformat/fix up my study notes"
 - "Organize my notes in Notion"
