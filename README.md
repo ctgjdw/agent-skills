@@ -31,3 +31,21 @@ Preserves all images, diagrams, tables, and child pages/databases.
 - "Tidy up my notes"
 - "Reformat/fix up my study notes"
 - "Organize my notes in Notion"
+
+### planning-trips
+
+Structured, collaborative process for turning a vague trip idea ("plan a trip
+from Singapore to Osaka for 10D9N") into a complete, durable set of
+trip-planning documents (`CLAUDE.md` + `00_overview.md` through
+`05_bucketlist.md`). Asks one upfront questionnaire, then iterates with
+research, enforcing strict source-verification and uncertainty-labeling
+rules for every operational fact (hours, prices, dates, addresses).
+
+**Use when:**
+
+- "Plan a trip from X to Y for ND"
+- "Help me plan a 2-week Italy vacation"
+- "Let's plan a Hokkaido honeymoon"
+
+**Not for:** single-recommendation questions ("best ramen in Kyoto") or
+on-the-go edits to an already-planned trip.
